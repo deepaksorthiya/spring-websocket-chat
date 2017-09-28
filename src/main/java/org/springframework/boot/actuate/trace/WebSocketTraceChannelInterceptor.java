@@ -21,58 +21,57 @@ public class WebSocketTraceChannelInterceptor extends ChannelInterceptorAdapter 
 
 	private final TraceRepository traceRepository;
 
-	
 	public WebSocketTraceChannelInterceptor(TraceRepository traceRepository) {
 		this.traceRepository = traceRepository;
 	}
 
 	@Override
 	public void afterSendCompletion(Message<?> message, MessageChannel channel, boolean sent, Exception ex) {
-		Map<String, Object> trace = new LinkedHashMap<String, Object>();
-		
+		Map<String, Object> trace = new LinkedHashMap<>();
+
 		StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(message);
-		
+
 		// Don't trace non-STOMP messages (like heartbeats)
-		if(headerAccessor.getCommand() == null) {
+		if (headerAccessor.getCommand() == null) {
 			return;
 		}
-		
+
 		String payload = new String((byte[]) message.getPayload());
-		
+
 		trace.put("stompCommand", headerAccessor.getCommand().name());
 		trace.put("nativeHeaders", getNativeHeaders(headerAccessor));
 
-		if(!payload.isEmpty()) {
+		if (!payload.isEmpty()) {
 			trace.put("payload", payload);
 		}
-		
+
 		traceRepository.add(trace);
 	}
-	
+
 	@SuppressWarnings("unchecked")
 	private Map<String, Object> getNativeHeaders(StompHeaderAccessor headerAccessor) {
-		Map<String, List<String>> nativeHeaders = 
-				(Map<String, List<String>>) headerAccessor.getHeader(NativeMessageHeaderAccessor.NATIVE_HEADERS);
-		
-		if(nativeHeaders == null) {
-			return Collections.EMPTY_MAP;
+		Map<String, List<String>> nativeHeaders = (Map<String, List<String>>) headerAccessor
+				.getHeader(NativeMessageHeaderAccessor.NATIVE_HEADERS);
+
+		if (nativeHeaders == null) {
+			return Collections.emptyMap();
 		}
-		
-		Map<String, Object> traceHeaders = new LinkedHashMap<String, Object>();
-		
-		for(String header : nativeHeaders.keySet()) {
-			List<String> headerValue = (List<String>) nativeHeaders.get(header);
+
+		Map<String, Object> traceHeaders = new LinkedHashMap<>();
+
+		for (String header : nativeHeaders.keySet()) {
+			List<String> headerValue = nativeHeaders.get(header);
 			Object value = headerValue;
-				
-			if(headerValue.size() == 1) {
+
+			if (headerValue.size() == 1) {
 				value = headerValue.get(0);
-			} else if(headerValue.isEmpty()) {
+			} else if (headerValue.isEmpty()) {
 				value = "";
 			}
-			
+
 			traceHeaders.put(header, value);
 		}
-		
+
 		return traceHeaders;
 	}
 }
